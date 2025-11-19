@@ -49,7 +49,7 @@ class ProfileController extends Controller
 
     public function update(UpdateProfileRequest $request)
     {
-        $dto = UpdateUserProfileDTO::fromArray(auth()->id(), $request->validated());
+        $dto = UpdateUserProfileDTO::fromArray(auth()->user()->id, $request->validated());
         $user = $this->updateUserProfileAction->execute($dto);
 
         if ($request->expectsJson()) {
@@ -65,7 +65,7 @@ class ProfileController extends Controller
     public function uploadAvatar(UploadAvatarRequest $request)
     {
         $user = $this->uploadUserAvatarAction->execute(
-            auth()->id(),
+            auth()->user()->id,
             $request->file('avatar')
         );
 
@@ -81,7 +81,7 @@ class ProfileController extends Controller
 
     public function changePassword(ChangePasswordRequest $request)
     {
-        $dto = ChangePasswordDTO::fromArray(auth()->id(), $request->validated());
+        $dto = ChangePasswordDTO::fromArray(auth()->user()->id, $request->validated());
         $this->changePasswordAction->execute($dto);
 
         if ($request->expectsJson()) {

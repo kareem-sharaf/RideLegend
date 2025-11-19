@@ -1,0 +1,27 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    public function up(): void
+    {
+        Schema::create('inspection_images', function (Blueprint $table) {
+            $table->id();
+            $table->unsignedBigInteger('inspection_id');
+            $table->string('path');
+            $table->timestamps();
+
+            $table->foreign('inspection_id')->references('id')->on('inspections')->onDelete('cascade');
+            $table->index('inspection_id');
+        });
+    }
+
+    public function down(): void
+    {
+        Schema::dropIfExists('inspection_images');
+    }
+};
+

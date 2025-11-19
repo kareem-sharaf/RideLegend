@@ -4,6 +4,10 @@ use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\RegisterController;
 use App\Http\Controllers\Auth\OtpController;
 use App\Http\Controllers\User\ProfileController;
+use App\Http\Controllers\Product\ProductController;
+use App\Http\Controllers\Product\ProductImageController;
+use App\Http\Controllers\Inspection\InspectionController;
+use App\Http\Controllers\Certification\CertificationController;
 use Illuminate\Support\Facades\Route;
 
 // Home
@@ -42,4 +46,31 @@ Route::middleware('auth')->group(function () {
         Route::post('/avatar', [ProfileController::class, 'uploadAvatar'])->name('avatar.upload');
         Route::post('/password', [ProfileController::class, 'changePassword'])->name('password.change');
     });
+
+    // Product Routes
+    Route::prefix('products')->name('products.')->group(function () {
+        Route::get('/create', [ProductController::class, 'create'])->name('create');
+        Route::post('/', [ProductController::class, 'store'])->name('store');
+        Route::get('/{id}/edit', [ProductController::class, 'edit'])->name('edit');
+        Route::put('/{id}', [ProductController::class, 'update'])->name('update');
+        Route::delete('/{id}', [ProductController::class, 'destroy'])->name('destroy');
+        Route::post('/{id}/images', [ProductImageController::class, 'store'])->name('images.store');
+    });
+
+    // Inspection Routes
+    Route::prefix('inspections')->name('inspections.')->group(function () {
+        Route::post('/', [InspectionController::class, 'store'])->name('store');
+        Route::post('/{id}/report', [InspectionController::class, 'submitReport'])->name('report.submit');
+        Route::post('/{id}/images', [InspectionController::class, 'uploadImages'])->name('images.upload');
+    });
+
+    // Certification Routes
+    Route::prefix('certifications')->name('certifications.')->group(function () {
+        Route::post('/generate', [CertificationController::class, 'generate'])->name('generate');
+        Route::get('/{id}', [CertificationController::class, 'show'])->name('show');
+    });
 });
+
+// Public Product Routes
+Route::get('/products', [ProductController::class, 'index'])->name('products.index');
+Route::get('/products/{id}', [ProductController::class, 'show'])->name('products.show');
