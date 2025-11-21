@@ -25,24 +25,27 @@ class DashboardController extends Controller
 
     public function index()
     {
-        // Overall Statistics
-        $stats = [
-            'total_users' => User::count(),
-            'total_buyers' => User::where('role', 'buyer')->count(),
-            'total_sellers' => User::where('role', 'seller')->count(),
-            'total_workshops' => User::where('role', 'workshop')->count(),
-            'total_products' => Product::count(),
-            'pending_products' => Product::where('status', 'pending')->count(),
-            'approved_products' => Product::where('status', 'approved')->count(),
-            'rejected_products' => Product::where('status', 'rejected')->count(),
-            'total_orders' => Order::count(),
-            'pending_orders' => Order::where('status', 'pending')->count(),
-            'completed_orders' => Order::where('status', 'delivered')->count(),
-            'total_revenue' => Order::where('status', '!=', 'cancelled')->sum('total'),
-            'total_payments' => Payment::where('status', 'completed')->sum('amount'),
-            'pending_inspections' => Inspection::where('status', 'pending')->count(),
-            'pending_trade_ins' => TradeIn::where('status', 'pending')->count(),
-        ];
+        // Cache statistics for better performance (5 minutes)
+        $cacheKey = 'admin:dashboard:stats';
+        $stats = \Illuminate\Support\Facades\Cache::remember($cacheKey, 300, function () {
+            return [
+                'total_users' => User::count(),
+                'total_buyers' => User::where('role', 'buyer')->count(),
+                'total_sellers' => User::where('role', 'seller')->count(),
+                'total_workshops' => User::where('role', 'workshop')->count(),
+                'total_products' => Product::count(),
+                'pending_products' => Product::where('status', 'pending')->count(),
+                'approved_products' => Product::where('status', 'approved')->count(),
+                'rejected_products' => Product::where('status', 'rejected')->count(),
+                'total_orders' => Order::count(),
+                'pending_orders' => Order::where('status', 'pending')->count(),
+                'completed_orders' => Order::where('status', 'delivered')->count(),
+                'total_revenue' => Order::where('status', '!=', 'cancelled')->sum('total'),
+                'total_payments' => Payment::where('status', 'completed')->sum('amount'),
+                'pending_inspections' => Inspection::where('status', 'pending')->count(),
+                'pending_trade_ins' => TradeIn::where('status', 'pending')->count(),
+            ];
+        });
 
         // Recent Orders (Last 10)
         $recentOrders = Order::with(['buyer'])
