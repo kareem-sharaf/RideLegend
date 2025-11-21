@@ -18,4 +18,3 @@ interface CartRepositoryInterface
 
     public function clearUserCart(int $userId): void;
 }
-

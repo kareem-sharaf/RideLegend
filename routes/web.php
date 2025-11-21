@@ -18,6 +18,12 @@ use App\Http\Controllers\Admin\TradeInController;
 use App\Http\Controllers\Admin\WarrantyController;
 use App\Http\Controllers\Admin\ShippingController;
 use App\Http\Controllers\Admin\SettingsController;
+use App\Http\Controllers\CartController;
+use App\Http\Controllers\CheckoutController;
+use App\Http\Controllers\OrderController;
+use App\Http\Controllers\PaymentController;
+use App\Http\Controllers\TradeInController;
+use App\Http\Controllers\ShippingController;
 use Illuminate\Support\Facades\Route;
 
 // Home
@@ -78,6 +84,49 @@ Route::middleware('auth')->group(function () {
     Route::prefix('certifications')->name('certifications.')->group(function () {
         Route::post('/generate', [CertificationController::class, 'generate'])->name('generate');
         Route::get('/{id}', [CertificationController::class, 'show'])->name('show');
+    });
+
+    // Cart Routes
+    Route::prefix('cart')->name('cart.')->group(function () {
+        Route::get('/', [CartController::class, 'index'])->name('index');
+        Route::post('/', [CartController::class, 'store'])->name('store');
+        Route::put('/{id}', [CartController::class, 'update'])->name('update');
+        Route::delete('/{id}', [CartController::class, 'destroy'])->name('destroy');
+    });
+
+    // Checkout Routes
+    Route::prefix('checkout')->name('checkout.')->group(function () {
+        Route::get('/', [CheckoutController::class, 'index'])->name('index');
+        Route::post('/', [CheckoutController::class, 'store'])->name('store');
+    });
+
+    // Order Routes
+    Route::prefix('orders')->name('orders.')->group(function () {
+        Route::get('/', [OrderController::class, 'index'])->name('index');
+        Route::get('/{id}', [OrderController::class, 'show'])->name('show');
+        Route::post('/{id}/cancel', [OrderController::class, 'cancel'])->name('cancel');
+    });
+
+    // Payment Routes
+    Route::prefix('payments')->name('payments.')->group(function () {
+        Route::post('/', [PaymentController::class, 'store'])->name('store');
+        Route::post('/{id}/confirm', [PaymentController::class, 'confirm'])->name('confirm');
+        Route::post('/{id}/refund', [PaymentController::class, 'refund'])->name('refund');
+        Route::get('/{id}/status', [PaymentController::class, 'status'])->name('status');
+    });
+
+    // Trade-in Routes
+    Route::prefix('trade-in')->name('trade-in.')->group(function () {
+        Route::get('/create', [TradeInController::class, 'create'])->name('create');
+        Route::post('/', [TradeInController::class, 'store'])->name('store');
+        Route::get('/', [TradeInController::class, 'index'])->name('index');
+        Route::get('/{id}', [TradeInController::class, 'show'])->name('show');
+    });
+
+    // Shipping Routes
+    Route::prefix('shipping')->name('shipping.')->group(function () {
+        Route::get('/track/{trackingNumber}', [ShippingController::class, 'track'])->name('track');
+        Route::get('/{id}', [ShippingController::class, 'show'])->name('show');
     });
 
     // Admin Routes

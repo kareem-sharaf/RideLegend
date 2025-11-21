@@ -40,19 +40,6 @@ class LoginController extends Controller
 
         return redirect()->intended(route('dashboard'))->with('success', 'Login successful!');
     }
-    {
-        $dto = LoginUserDTO::fromArray($request->validated());
-        $user = $this->loginUserAction->execute($dto);
-
-        // Log the user in
-        $eloquentUser = \App\Models\User::find($user->getId());
-        Auth::login($eloquentUser, $dto->remember);
-
-        return response()->json([
-            'message' => 'Login successful',
-            'user' => new UserResource($user),
-        ]);
-    }
 
     public function logout(Request $request)
     {

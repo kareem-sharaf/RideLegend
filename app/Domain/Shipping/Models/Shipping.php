@@ -125,5 +125,11 @@ class Shipping
         $this->status = ShippingStatus::exception();
         $this->updatedAt = new \DateTimeImmutable();
     }
+
+    public function changeStatus(ShippingStatus $newStatus): void
+    {
+        $this->status = $newStatus;
+        $this->updatedAt = new \DateTimeImmutable();
+    }
 }
 

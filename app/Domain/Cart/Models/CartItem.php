@@ -82,4 +82,3 @@ class CartItem
         $this->updateQuantity($this->quantity - $amount);
     }
 }
-

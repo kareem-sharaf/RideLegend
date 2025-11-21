@@ -10,7 +10,6 @@ use App\Http\Resources\UserResource;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\App;
 
 class RegisterController extends Controller
 {
@@ -41,18 +40,4 @@ class RegisterController extends Controller
 
         return redirect()->route('dashboard')->with('success', 'Registration successful!');
     }
-    {
-        $dto = RegisterUserDTO::fromArray($request->validated());
-        $user = $this->registerUserAction->execute($dto);
-
-        // Log the user in
-        $eloquentUser = \App\Models\User::find($user->getId());
-        Auth::login($eloquentUser);
-
-        return response()->json([
-            'message' => 'User registered successfully',
-            'user' => new UserResource($user),
-        ], 201);
-    }
 }
-

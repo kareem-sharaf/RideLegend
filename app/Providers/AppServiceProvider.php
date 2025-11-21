@@ -18,6 +18,26 @@ use App\Infrastructure\Services\InspectionImage\InspectionImageServiceInterface;
 use App\Infrastructure\Services\InspectionImage\LocalStorageInspectionImageService;
 use App\Infrastructure\Services\InspectionReport\InspectionReportPdfServiceInterface;
 use App\Infrastructure\Services\InspectionReport\DomPdfInspectionReportService;
+use App\Domain\Cart\Repositories\CartRepositoryInterface;
+use App\Domain\Order\Repositories\OrderRepositoryInterface;
+use App\Domain\Payment\Repositories\PaymentRepositoryInterface;
+use App\Domain\TradeIn\Repositories\TradeInRepositoryInterface;
+use App\Domain\Shipping\Repositories\ShippingRepositoryInterface;
+use App\Domain\Warranty\Repositories\WarrantyRepositoryInterface;
+use App\Infrastructure\Repositories\Cart\EloquentCartRepository;
+use App\Infrastructure\Repositories\Order\EloquentOrderRepository;
+use App\Infrastructure\Repositories\Payment\EloquentPaymentRepository;
+use App\Infrastructure\Repositories\TradeIn\EloquentTradeInRepository;
+use App\Infrastructure\Repositories\Shipping\EloquentShippingRepository;
+use App\Infrastructure\Repositories\Warranty\EloquentWarrantyRepository;
+use App\Infrastructure\Services\Payments\PaymentServiceFactory;
+use App\Infrastructure\Services\Payments\StripeService;
+use App\Infrastructure\Services\Payments\PayPalService;
+use App\Infrastructure\Services\Payments\LocalGatewayService;
+use App\Infrastructure\Services\Shipping\ShippingServiceFactory;
+use App\Infrastructure\Services\Shipping\DHLService;
+use App\Infrastructure\Services\Shipping\AramexService;
+use App\Infrastructure\Services\Shipping\LocalCourierService;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -70,6 +90,79 @@ class AppServiceProvider extends ServiceProvider
             InspectionReportPdfServiceInterface::class,
             DomPdfInspectionReportService::class
         );
+
+        // Phase 7: Commerce Repositories
+        $this->app->bind(
+            CartRepositoryInterface::class,
+            EloquentCartRepository::class
+        );
+
+        $this->app->bind(
+            OrderRepositoryInterface::class,
+            EloquentOrderRepository::class
+        );
+
+        $this->app->bind(
+            PaymentRepositoryInterface::class,
+            EloquentPaymentRepository::class
+        );
+
+        $this->app->bind(
+            TradeInRepositoryInterface::class,
+            EloquentTradeInRepository::class
+        );
+
+        $this->app->bind(
+            ShippingRepositoryInterface::class,
+            EloquentShippingRepository::class
+        );
+
+        $this->app->bind(
+            WarrantyRepositoryInterface::class,
+            EloquentWarrantyRepository::class
+        );
+
+        // Payment Services
+        $this->app->singleton(StripeService::class, function ($app) {
+            return new StripeService();
+        });
+
+        $this->app->singleton(PayPalService::class, function ($app) {
+            return new PayPalService();
+        });
+
+        $this->app->singleton(LocalGatewayService::class, function ($app) {
+            return new LocalGatewayService();
+        });
+
+        $this->app->singleton(PaymentServiceFactory::class, function ($app) {
+            return new PaymentServiceFactory(
+                $app->make(StripeService::class),
+                $app->make(PayPalService::class),
+                $app->make(LocalGatewayService::class)
+            );
+        });
+
+        // Shipping Services
+        $this->app->singleton(DHLService::class, function ($app) {
+            return new DHLService();
+        });
+
+        $this->app->singleton(AramexService::class, function ($app) {
+            return new AramexService();
+        });
+
+        $this->app->singleton(LocalCourierService::class, function ($app) {
+            return new LocalCourierService();
+        });
+
+        $this->app->singleton(ShippingServiceFactory::class, function ($app) {
+            return new ShippingServiceFactory(
+                $app->make(DHLService::class),
+                $app->make(AramexService::class),
+                $app->make(LocalCourierService::class)
+            );
+        });
     }
 
     /**

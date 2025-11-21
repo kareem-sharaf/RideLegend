@@ -123,13 +123,13 @@
                     <h3 class="text-lg font-semibold mb-2 text-gray-900">Get Certified</h3>
                     <p class="text-gray-600">Receive certification report and listing approval</p>
                 </div>
-                <div class="text-center">
+        <div class="text-center">
                     <div class="w-16 h-16 bg-primary-600 text-white rounded-full flex items-center justify-center mx-auto mb-4 text-2xl font-bold">4</div>
                     <h3 class="text-lg font-semibold mb-2 text-gray-900">Sell & Ship</h3>
                     <p class="text-gray-600">Complete sale and ship securely</p>
                 </div>
-            </div>
         </div>
+    </div>
     </section>
 
     <!-- CTA Section -->

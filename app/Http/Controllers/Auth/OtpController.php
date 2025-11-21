@@ -38,14 +38,6 @@ class OtpController extends Controller
 
         return redirect()->route('otp.verify.form')->with('success', 'OTP sent successfully!');
     }
-    {
-        $dto = SendOtpDTO::fromArray($request->validated());
-        $this->sendOtpAction->execute($dto);
-
-        return response()->json([
-            'message' => 'OTP sent successfully',
-        ]);
-    }
 
     public function verify(VerifyOtpRequest $request)
     {
@@ -61,4 +53,3 @@ class OtpController extends Controller
         return redirect()->route('dashboard')->with('success', 'OTP verified successfully!');
     }
 }
-
