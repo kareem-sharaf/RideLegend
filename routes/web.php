@@ -8,6 +8,16 @@ use App\Http\Controllers\Product\ProductController;
 use App\Http\Controllers\Product\ProductImageController;
 use App\Http\Controllers\Inspection\InspectionController;
 use App\Http\Controllers\Certification\CertificationController;
+use App\Http\Controllers\Admin\DashboardController;
+use App\Http\Controllers\Admin\UserController;
+use App\Http\Controllers\Admin\ProductController as AdminProductController;
+use App\Http\Controllers\Admin\OrderController;
+use App\Http\Controllers\Admin\PaymentController;
+use App\Http\Controllers\Admin\InspectionController as AdminInspectionController;
+use App\Http\Controllers\Admin\TradeInController;
+use App\Http\Controllers\Admin\WarrantyController;
+use App\Http\Controllers\Admin\ShippingController;
+use App\Http\Controllers\Admin\SettingsController;
 use Illuminate\Support\Facades\Route;
 
 // Home
@@ -68,6 +78,82 @@ Route::middleware('auth')->group(function () {
     Route::prefix('certifications')->name('certifications.')->group(function () {
         Route::post('/generate', [CertificationController::class, 'generate'])->name('generate');
         Route::get('/{id}', [CertificationController::class, 'show'])->name('show');
+    });
+
+    // Admin Routes
+    Route::prefix('admin')->name('admin.')->middleware('role:admin')->group(function () {
+        Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+        
+        // Users Management
+        Route::prefix('users')->name('users.')->group(function () {
+            Route::get('/', [UserController::class, 'index'])->name('index');
+            Route::get('/{id}', [UserController::class, 'show'])->name('show');
+            Route::get('/{id}/edit', [UserController::class, 'edit'])->name('edit');
+            Route::put('/{id}', [UserController::class, 'update'])->name('update');
+            Route::delete('/{id}', [UserController::class, 'destroy'])->name('destroy');
+            Route::post('/{id}/toggle-status', [UserController::class, 'toggleStatus'])->name('toggle-status');
+        });
+
+        // Products Management
+        Route::prefix('products')->name('products.')->group(function () {
+            Route::get('/', [AdminProductController::class, 'index'])->name('index');
+            Route::get('/{id}', [AdminProductController::class, 'show'])->name('show');
+            Route::post('/{id}/approve', [AdminProductController::class, 'approve'])->name('approve');
+            Route::post('/{id}/reject', [AdminProductController::class, 'reject'])->name('reject');
+            Route::delete('/{id}', [AdminProductController::class, 'destroy'])->name('destroy');
+        });
+
+        // Inspections Management
+        Route::prefix('inspections')->name('inspections.')->group(function () {
+            Route::get('/', [AdminInspectionController::class, 'index'])->name('index');
+            Route::get('/{id}', [AdminInspectionController::class, 'show'])->name('show');
+            Route::post('/{id}/approve', [AdminInspectionController::class, 'approve'])->name('approve');
+            Route::post('/{id}/reject', [AdminInspectionController::class, 'reject'])->name('reject');
+        });
+
+        // Orders Management
+        Route::prefix('orders')->name('orders.')->group(function () {
+            Route::get('/', [OrderController::class, 'index'])->name('index');
+            Route::get('/{id}', [OrderController::class, 'show'])->name('show');
+            Route::put('/{id}/status', [OrderController::class, 'updateStatus'])->name('update-status');
+            Route::get('/{id}/invoice', [OrderController::class, 'invoice'])->name('invoice');
+            Route::delete('/{id}', [OrderController::class, 'destroy'])->name('destroy');
+        });
+
+        // Payments Management
+        Route::prefix('payments')->name('payments.')->group(function () {
+            Route::get('/', [PaymentController::class, 'index'])->name('index');
+            Route::get('/{id}', [PaymentController::class, 'show'])->name('show');
+            Route::post('/{id}/refund', [PaymentController::class, 'refund'])->name('refund');
+        });
+
+        // Trade-ins Management
+        Route::prefix('trade-ins')->name('trade-ins.')->group(function () {
+            Route::get('/', [TradeInController::class, 'index'])->name('index');
+            Route::get('/{id}', [TradeInController::class, 'show'])->name('show');
+            Route::post('/{id}/approve', [TradeInController::class, 'approve'])->name('approve');
+            Route::post('/{id}/reject', [TradeInController::class, 'reject'])->name('reject');
+        });
+
+        // Warranties Management
+        Route::prefix('warranties')->name('warranties.')->group(function () {
+            Route::get('/', [WarrantyController::class, 'index'])->name('index');
+            Route::get('/{id}', [WarrantyController::class, 'show'])->name('show');
+            Route::put('/{id}/status', [WarrantyController::class, 'updateStatus'])->name('update-status');
+        });
+
+        // Shipping Management
+        Route::prefix('shipping')->name('shipping.')->group(function () {
+            Route::get('/', [ShippingController::class, 'index'])->name('index');
+            Route::get('/{id}', [ShippingController::class, 'show'])->name('show');
+            Route::put('/{id}/status', [ShippingController::class, 'updateStatus'])->name('update-status');
+        });
+
+        // Settings
+        Route::prefix('settings')->name('settings.')->group(function () {
+            Route::get('/', [SettingsController::class, 'index'])->name('index');
+            Route::put('/', [SettingsController::class, 'update'])->name('update');
+        });
     });
 });
 
