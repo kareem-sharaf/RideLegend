@@ -2,57 +2,75 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Application\Admin\Warranties\Actions\ListWarrantiesAction;
+use App\Application\Admin\Warranties\Actions\ShowWarrantyAction;
+use App\Application\Admin\Warranties\Actions\UpdateWarrantyAction;
+use App\Application\Admin\Warranties\DTOs\ListWarrantiesDTO;
+use App\Application\Admin\Warranties\DTOs\ShowWarrantyDTO;
+use App\Application\Admin\Warranties\DTOs\UpdateWarrantyDTO;
 use App\Http\Controllers\Controller;
-use App\Models\Warranty;
 use Illuminate\Http\Request;
 
 class WarrantyController extends Controller
 {
-    public function __construct()
-    {
+    public function __construct(
+        private ListWarrantiesAction $listWarrantiesAction,
+        private ShowWarrantyAction $showWarrantyAction,
+        private UpdateWarrantyAction $updateWarrantyAction,
+    ) {
         $this->middleware('auth');
         $this->middleware('role:admin');
     }
 
     public function index(Request $request)
     {
-        $query = Warranty::with(['order', 'product']);
+        $dto = new ListWarrantiesDTO(
+            status: $request->input('status'),
+            type: $request->input('type'),
+            search: $request->input('search'),
+            orderId: $request->input('order_id') ? (int)$request->input('order_id') : null,
+            productId: $request->input('product_id') ? (int)$request->input('product_id') : null,
+            dateFrom: $request->input('date_from'),
+            dateTo: $request->input('date_to'),
+            sortBy: $request->input('sort_by', 'created_at'),
+            sortDirection: $request->input('sort_direction', 'desc'),
+            page: $request->input('page', 1),
+            perPage: $request->input('per_page', 15),
+        );
 
-        // Filter by status
-        if ($request->filled('status')) {
-            $query->where('status', $request->status);
-        }
-
-        // Filter by type
-        if ($request->filled('type')) {
-            $query->where('type', $request->type);
-        }
-
-        $warranties = $query->orderBy('created_at', 'desc')->paginate(15);
+        $warranties = $this->listWarrantiesAction->execute($dto);
 
         return view('admin.warranties.index', compact('warranties'));
     }
 
     public function show($id)
     {
-        $warranty = Warranty::with(['order', 'product'])->findOrFail($id);
+        $dto = new ShowWarrantyDTO(warrantyId: (int)$id);
+        $warranty = $this->showWarrantyAction->execute($dto);
 
-        return view('admin.warranties.show', compact('warranty'));
+        // Get Eloquent model for view
+        $eloquentWarranty = \App\Models\Warranty::with(['order', 'product'])->findOrFail($id);
+
+        return view('admin.warranties.show', [
+            'warranty' => $eloquentWarranty,
+            'domainWarranty' => $warranty,
+        ]);
     }
 
     public function updateStatus(Request $request, $id)
     {
-        $warranty = Warranty::findOrFail($id);
-
         $validated = $request->validate([
             'status' => 'required|in:active,expired,cancelled',
         ]);
 
-        $warranty->status = $validated['status'];
-        $warranty->save();
+        $dto = new UpdateWarrantyDTO(
+            warrantyId: (int)$id,
+            status: $validated['status'],
+        );
+
+        $this->updateWarrantyAction->execute($dto);
 
         return redirect()->back()
             ->with('success', 'Warranty status updated successfully');
     }
 }
-

@@ -2,6 +2,14 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Application\Admin\Orders\Actions\CancelOrderAction;
+use App\Application\Admin\Orders\Actions\ListOrdersAction;
+use App\Application\Admin\Orders\Actions\ShowOrderAction;
+use App\Application\Admin\Orders\Actions\UpdateOrderStatusAction;
+use App\Application\Admin\Orders\DTOs\CancelOrderDTO;
+use App\Application\Admin\Orders\DTOs\ListOrdersDTO;
+use App\Application\Admin\Orders\DTOs\ShowOrderDTO;
+use App\Application\Admin\Orders\DTOs\UpdateOrderStatusDTO;
 use App\Http\Controllers\Controller;
 use App\Models\Order;
 use Illuminate\Http\Request;
@@ -10,57 +18,64 @@ use Dompdf\Options;
 
 class OrderController extends Controller
 {
-    public function __construct()
-    {
+    public function __construct(
+        private ListOrdersAction $listOrdersAction,
+        private ShowOrderAction $showOrderAction,
+        private UpdateOrderStatusAction $updateOrderStatusAction,
+        private CancelOrderAction $cancelOrderAction,
+    ) {
         $this->middleware('auth');
         $this->middleware('role:admin');
     }
 
     public function index(Request $request)
     {
-        $query = Order::with(['buyer', 'items.product']);
+        $dto = new ListOrdersDTO(
+            status: $request->input('status'),
+            search: $request->input('search'),
+            buyerId: $request->input('buyer_id') ? (int)$request->input('buyer_id') : null,
+            dateFrom: $request->input('date_from'),
+            dateTo: $request->input('date_to'),
+            minTotal: $request->input('min_total') ? (float)$request->input('min_total') : null,
+            maxTotal: $request->input('max_total') ? (float)$request->input('max_total') : null,
+            sortBy: $request->input('sort_by', 'created_at'),
+            sortDirection: $request->input('sort_direction', 'desc'),
+            page: $request->input('page', 1),
+            perPage: $request->input('per_page', 15),
+        );
 
-        // Filter by status
-        if ($request->filled('status')) {
-            $query->where('status', $request->status);
-        }
-
-        // Search
-        if ($request->filled('search')) {
-            $search = $request->search;
-            $query->where(function($q) use ($search) {
-                $q->where('order_number', 'like', "%{$search}%")
-                  ->orWhereHas('buyer', function($q) use ($search) {
-                      $q->where('first_name', 'like', "%{$search}%")
-                        ->orWhere('last_name', 'like', "%{$search}%")
-                        ->orWhere('email', 'like', "%{$search}%");
-                  });
-            });
-        }
-
-        $orders = $query->orderBy('created_at', 'desc')->paginate(15);
+        $orders = $this->listOrdersAction->execute($dto);
 
         return view('admin.orders.index', compact('orders'));
     }
 
     public function show($id)
     {
-        $order = Order::with(['buyer', 'items.product', 'payments', 'shipping', 'warranties'])
+        $dto = new ShowOrderDTO(orderId: (int)$id);
+        $order = $this->showOrderAction->execute($dto);
+
+        // Get Eloquent model for view
+        $eloquentOrder = Order::with(['buyer', 'items.product', 'payments', 'shipping', 'warranties'])
             ->findOrFail($id);
 
-        return view('admin.orders.show', compact('order'));
+        return view('admin.orders.show', [
+            'order' => $eloquentOrder,
+            'domainOrder' => $order,
+        ]);
     }
 
     public function updateStatus(Request $request, $id)
     {
-        $order = Order::findOrFail($id);
-
         $validated = $request->validate([
             'status' => 'required|in:pending,confirmed,processing,shipped,delivered,cancelled,refunded',
         ]);
 
-        $order->status = $validated['status'];
-        $order->save();
+        $dto = new UpdateOrderStatusDTO(
+            orderId: (int)$id,
+            status: $validated['status'],
+        );
+
+        $this->updateOrderStatusAction->execute($dto);
 
         return redirect()->back()
             ->with('success', 'Order status updated successfully');
@@ -94,4 +109,3 @@ class OrderController extends Controller
             ->with('success', 'Order deleted successfully');
     }
 }
-

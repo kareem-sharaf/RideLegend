@@ -2,80 +2,84 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Application\Admin\Payments\Actions\ListPaymentsAction;
+use App\Application\Admin\Payments\Actions\RefundPaymentAction;
+use App\Application\Admin\Payments\Actions\ShowPaymentAction;
+use App\Application\Admin\Payments\DTOs\ListPaymentsDTO;
+use App\Application\Admin\Payments\DTOs\RefundPaymentDTO;
+use App\Application\Admin\Payments\DTOs\ShowPaymentDTO;
 use App\Http\Controllers\Controller;
-use App\Models\Payment;
 use Illuminate\Http\Request;
 
 class PaymentController extends Controller
 {
-    public function __construct()
-    {
+    public function __construct(
+        private ListPaymentsAction $listPaymentsAction,
+        private ShowPaymentAction $showPaymentAction,
+        private RefundPaymentAction $refundPaymentAction,
+    ) {
         $this->middleware('auth');
         $this->middleware('role:admin');
     }
 
     public function index(Request $request)
     {
-        $query = Payment::with(['order', 'user']);
+        $dto = new ListPaymentsDTO(
+            status: $request->input('status'),
+            paymentMethod: $request->input('payment_method'),
+            search: $request->input('search'),
+            userId: $request->input('user_id') ? (int)$request->input('user_id') : null,
+            orderId: $request->input('order_id') ? (int)$request->input('order_id') : null,
+            dateFrom: $request->input('date_from'),
+            dateTo: $request->input('date_to'),
+            minAmount: $request->input('min_amount') ? (float)$request->input('min_amount') : null,
+            maxAmount: $request->input('max_amount') ? (float)$request->input('max_amount') : null,
+            sortBy: $request->input('sort_by', 'created_at'),
+            sortDirection: $request->input('sort_direction', 'desc'),
+            page: $request->input('page', 1),
+            perPage: $request->input('per_page', 15),
+        );
 
-        // Filter by status
-        if ($request->filled('status')) {
-            $query->where('status', $request->status);
-        }
-
-        // Filter by payment method
-        if ($request->filled('payment_method')) {
-            $query->where('payment_method', $request->payment_method);
-        }
-
-        // Search
-        if ($request->filled('search')) {
-            $search = $request->search;
-            $query->where(function($q) use ($search) {
-                $q->where('transaction_id', 'like', "%{$search}%")
-                  ->orWhereHas('order', function($q) use ($search) {
-                      $q->where('order_number', 'like', "%{$search}%");
-                  });
-            });
-        }
-
-        $payments = $query->orderBy('created_at', 'desc')->paginate(15);
+        $payments = $this->listPaymentsAction->execute($dto);
 
         return view('admin.payments.index', compact('payments'));
     }
 
     public function show($id)
     {
-        $payment = Payment::with(['order', 'user'])->findOrFail($id);
+        $dto = new ShowPaymentDTO(paymentId: (int)$id);
+        $payment = $this->showPaymentAction->execute($dto);
 
-        return view('admin.payments.show', compact('payment'));
+        // Get Eloquent model for view
+        $eloquentPayment = \App\Models\Payment::with(['user', 'order'])->findOrFail($id);
+
+        return view('admin.payments.show', [
+            'payment' => $eloquentPayment,
+            'domainPayment' => $payment,
+        ]);
     }
 
     public function refund(Request $request, $id)
     {
-        $payment = Payment::findOrFail($id);
-
-        if ($payment->status !== 'completed') {
-            return redirect()->back()
-                ->with('error', 'Only completed payments can be refunded');
-        }
-
         $validated = $request->validate([
-            'amount' => 'nullable|numeric|min:0|max:' . $payment->amount,
+            'amount' => 'nullable|numeric|min:0.01',
             'reason' => 'nullable|string|max:500',
         ]);
 
-        $refundAmount = $validated['amount'] ?? $payment->amount;
+        $dto = new RefundPaymentDTO(
+            paymentId: (int)$id,
+            amount: $validated['amount'] ?? null,
+            reason: $validated['reason'] ?? null,
+        );
 
-        // Update payment status
-        $payment->status = 'refunded';
-        $payment->save();
-
-        // Here you would integrate with payment gateway to process refund
-        // For now, we just update the status
+        try {
+            $this->refundPaymentAction->execute($dto);
+        } catch (\DomainException $e) {
+            return redirect()->back()
+                ->with('error', $e->getMessage());
+        }
 
         return redirect()->back()
-            ->with('success', "Payment refunded successfully. Amount: $" . number_format($refundAmount, 2));
+            ->with('success', 'Payment refunded successfully');
     }
 }
-

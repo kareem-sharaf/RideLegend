@@ -146,6 +146,8 @@ Route::middleware('auth')->group(function () {
         // Products Management
         Route::prefix('products')->name('products.')->group(function () {
             Route::get('/', [AdminProductController::class, 'index'])->name('index');
+            Route::get('/export', [AdminProductController::class, 'export'])->name('export');
+            Route::post('/bulk-action', [AdminProductController::class, 'bulkAction'])->name('bulk-action');
             Route::get('/{id}', [AdminProductController::class, 'show'])->name('show');
             Route::post('/{id}/approve', [AdminProductController::class, 'approve'])->name('approve');
             Route::post('/{id}/reject', [AdminProductController::class, 'reject'])->name('reject');

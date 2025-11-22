@@ -38,6 +38,9 @@ use App\Infrastructure\Services\Shipping\ShippingServiceFactory;
 use App\Infrastructure\Services\Shipping\DHLService;
 use App\Infrastructure\Services\Shipping\AramexService;
 use App\Infrastructure\Services\Shipping\LocalCourierService;
+use App\Infrastructure\Services\Export\ExportServiceInterface;
+use App\Infrastructure\Services\Export\CsvExportService;
+use App\Infrastructure\Services\Export\PdfExportService;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -163,6 +166,14 @@ class AppServiceProvider extends ServiceProvider
                 $app->make(LocalCourierService::class)
             );
         });
+
+        // Export Services
+        $this->app->bind(ExportServiceInterface::class, function ($app) {
+            return $app->make(CsvExportService::class);
+        });
+
+        $this->app->singleton(CsvExportService::class);
+        $this->app->singleton(PdfExportService::class);
     }
 
     /**

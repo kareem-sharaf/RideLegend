@@ -2,84 +2,96 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Application\Admin\Users\Actions\BanUserAction;
+use App\Application\Admin\Users\Actions\DeleteUserAction;
+use App\Application\Admin\Users\Actions\ListUsersAction;
+use App\Application\Admin\Users\Actions\ShowUserAction;
+use App\Application\Admin\Users\Actions\UnbanUserAction;
+use App\Application\Admin\Users\Actions\UpdateUserAction;
+use App\Application\Admin\Users\DTOs\BanUserDTO;
+use App\Application\Admin\Users\DTOs\DeleteUserDTO;
+use App\Application\Admin\Users\DTOs\ListUsersDTO;
+use App\Application\Admin\Users\DTOs\ShowUserDTO;
+use App\Application\Admin\Users\DTOs\UpdateUserDTO;
 use App\Http\Controllers\Controller;
-use App\Models\User;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Hash;
 use Spatie\Permission\Models\Role;
 
 class UserController extends Controller
 {
-    public function __construct()
-    {
+    public function __construct(
+        private ListUsersAction $listUsersAction,
+        private ShowUserAction $showUserAction,
+        private UpdateUserAction $updateUserAction,
+        private DeleteUserAction $deleteUserAction,
+        private BanUserAction $banUserAction,
+        private UnbanUserAction $unbanUserAction,
+    ) {
         $this->middleware('auth');
         $this->middleware('role:admin');
     }
 
     public function index(Request $request)
     {
-        $query = User::query();
+        $dto = new ListUsersDTO(
+            role: $request->input('role'),
+            search: $request->input('search'),
+            status: $request->input('status'),
+            sortBy: $request->input('sort_by', 'created_at'),
+            sortDirection: $request->input('sort_direction', 'desc'),
+            page: $request->input('page', 1),
+            perPage: $request->input('per_page', 15),
+        );
 
-        // Filter by role
-        if ($request->filled('role')) {
-            $query->where('role', $request->role);
-        }
-
-        // Search
-        if ($request->filled('search')) {
-            $search = $request->search;
-            $query->where(function($q) use ($search) {
-                $q->where('first_name', 'like', "%{$search}%")
-                  ->orWhere('last_name', 'like', "%{$search}%")
-                  ->orWhere('email', 'like', "%{$search}%");
-            });
-        }
-
-        $users = $query->orderBy('created_at', 'desc')->paginate(15);
+        $users = $this->listUsersAction->execute($dto);
 
         return view('admin.users.index', compact('users'));
     }
 
     public function show($id)
     {
-        $user = User::with(['roles', 'permissions'])->findOrFail($id);
-        
-        // Get user statistics
-        $stats = [
-            'total_products' => \App\Models\Product::where('seller_id', $id)->count(),
-            'total_orders' => \App\Models\Order::where('buyer_id', $id)->count(),
-            'total_spent' => \App\Models\Order::where('buyer_id', $id)->where('status', '!=', 'cancelled')->sum('total'),
-        ];
+        $dto = new ShowUserDTO(userId: (int)$id);
+        $result = $this->showUserAction->execute($dto);
 
-        return view('admin.users.show', compact('user', 'stats'));
+        return view('admin.users.show', [
+            'user' => $result['user'],
+            'stats' => $result['stats'],
+        ]);
     }
 
     public function edit($id)
     {
-        $user = User::findOrFail($id);
+        $dto = new ShowUserDTO(userId: (int)$id);
+        $result = $this->showUserAction->execute($dto);
         $roles = Role::all();
 
-        return view('admin.users.edit', compact('user', 'roles'));
+        return view('admin.users.edit', [
+            'user' => $result['user'],
+            'stats' => $result['stats'],
+            'roles' => $roles,
+        ]);
     }
 
     public function update(Request $request, $id)
     {
-        $user = User::findOrFail($id);
-
         $validated = $request->validate([
             'first_name' => 'required|string|max:255',
             'last_name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email,' . $id,
             'phone' => 'nullable|string|max:20',
-            'role' => 'required|in:buyer,seller,workshop,admin',
+            'roles' => 'nullable|array',
         ]);
 
-        $user->update($validated);
+        $dto = new UpdateUserDTO(
+            userId: (int)$id,
+            firstName: $validated['first_name'],
+            lastName: $validated['last_name'],
+            email: $validated['email'],
+            phone: $validated['phone'] ?? null,
+            roles: $validated['roles'] ?? null,
+        );
 
-        // Update roles
-        if ($request->filled('roles')) {
-            $user->syncRoles($request->roles);
-        }
+        $this->updateUserAction->execute($dto);
 
         return redirect()->route('admin.users.show', $id)
             ->with('success', 'User updated successfully');
@@ -87,15 +99,17 @@ class UserController extends Controller
 
     public function destroy($id)
     {
-        $user = User::findOrFail($id);
-        
-        // Prevent deleting yourself
-        if ($user->id === auth()->id()) {
-            return redirect()->route('admin.users.index')
-                ->with('error', 'You cannot delete your own account');
-        }
+        $dto = new DeleteUserDTO(
+            userId: (int)$id,
+            adminId: auth()->id(),
+        );
 
-        $user->delete();
+        try {
+            $this->deleteUserAction->execute($dto);
+        } catch (\DomainException $e) {
+            return redirect()->route('admin.users.index')
+                ->with('error', $e->getMessage());
+        }
 
         return redirect()->route('admin.users.index')
             ->with('success', 'User deleted successfully');
@@ -103,19 +117,18 @@ class UserController extends Controller
 
     public function toggleStatus($id)
     {
-        $user = User::findOrFail($id);
+        $user = \App\Models\User::findOrFail($id);
         
-        // Toggle email verification as status indicator
         if ($user->email_verified_at) {
-            $user->email_verified_at = null;
+            $dto = new BanUserDTO(userId: (int)$id);
+            $this->banUserAction->execute($dto);
+            $message = 'User banned successfully';
         } else {
-            $user->email_verified_at = now();
+            $dto = new BanUserDTO(userId: (int)$id);
+            $this->unbanUserAction->execute($dto);
+            $message = 'User unbanned successfully';
         }
-        
-        $user->save();
 
-        return redirect()->back()
-            ->with('success', 'User status updated successfully');
+        return redirect()->back()->with('success', $message);
     }
 }
-
