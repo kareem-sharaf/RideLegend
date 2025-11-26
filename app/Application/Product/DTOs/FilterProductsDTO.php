@@ -6,8 +6,8 @@ final class FilterProductsDTO
 {
     public function __construct(
         public readonly ?int $categoryId = null,
-        public readonly ?string $bikeType = null,
-        public readonly ?string $frameMaterial = null,
+        public readonly mixed $bikeType = null,
+        public readonly mixed $frameMaterial = null,
         public readonly ?string $brakeType = null,
         public readonly ?string $wheelSize = null,
         public readonly ?float $minPrice = null,
@@ -17,16 +17,34 @@ final class FilterProductsDTO
         public readonly ?bool $certifiedOnly = false,
         public readonly ?string $status = null,
         public readonly ?string $search = null,
+        public readonly ?string $sortBy = null,
+        public readonly ?string $sortDirection = null,
         public readonly int $page = 1,
         public readonly int $perPage = 24,
     ) {}
 
     public static function fromArray(array $data): self
     {
+        // Handle bike_type as array (from checkboxes)
+        $bikeType = $data['bike_type'] ?? $data['bikeType'] ?? null;
+        if (is_array($bikeType) && !empty($bikeType)) {
+            $bikeType = $bikeType;
+        } elseif (is_string($bikeType) && empty($bikeType)) {
+            $bikeType = null;
+        }
+
+        // Handle frame_material as array (from checkboxes)
+        $frameMaterial = $data['frame_material'] ?? $data['frameMaterial'] ?? null;
+        if (is_array($frameMaterial) && !empty($frameMaterial)) {
+            $frameMaterial = $frameMaterial;
+        } elseif (is_string($frameMaterial) && empty($frameMaterial)) {
+            $frameMaterial = null;
+        }
+
         return new self(
             categoryId: $data['category_id'] ?? $data['categoryId'] ?? null,
-            bikeType: $data['bike_type'] ?? $data['bikeType'] ?? null,
-            frameMaterial: $data['frame_material'] ?? $data['frameMaterial'] ?? null,
+            bikeType: $bikeType,
+            frameMaterial: $frameMaterial,
             brakeType: $data['brake_type'] ?? $data['brakeType'] ?? null,
             wheelSize: $data['wheel_size'] ?? $data['wheelSize'] ?? null,
             minPrice: isset($data['min_price']) ? (float) $data['min_price'] : ($data['minPrice'] ?? null),
@@ -36,9 +54,10 @@ final class FilterProductsDTO
             certifiedOnly: $data['certified_only'] ?? $data['certifiedOnly'] ?? false,
             status: $data['status'] ?? null,
             search: $data['search'] ?? null,
+            sortBy: $data['sort'] ?? $data['sortBy'] ?? null,
+            sortDirection: $data['sort_direction'] ?? $data['sortDirection'] ?? null,
             page: $data['page'] ?? 1,
             perPage: $data['per_page'] ?? $data['perPage'] ?? 24,
         );
     }
 }
-

@@ -27,6 +27,17 @@ return new class extends Migration
             $table->index('status');
             $table->index('expires_at');
         });
+        
+        // Add foreign key constraint from products to certifications if it doesn't exist
+        if (Schema::hasTable('products') && Schema::hasColumn('products', 'certification_id')) {
+            try {
+                Schema::table('products', function (Blueprint $table) {
+                    $table->foreign('certification_id')->references('id')->on('certifications')->onDelete('set null');
+                });
+            } catch (\Exception $e) {
+                // Foreign key might already exist, ignore
+            }
+        }
     }
 
     public function down(): void

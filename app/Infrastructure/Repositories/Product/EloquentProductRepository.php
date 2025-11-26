@@ -152,6 +152,11 @@ class EloquentProductRepository implements ProductRepositoryInterface
         }
     }
 
+    public function toDomainModel(EloquentProduct $eloquent): Product
+    {
+        return $this->toDomain($eloquent);
+    }
+
     private function toDomain(EloquentProduct $eloquent): Product
     {
         $images = $eloquent->images->map(function ($image) {

@@ -8,6 +8,18 @@ return new class extends Migration
 {
     public function up(): void
     {
+        if (Schema::hasTable('products')) {
+            // Table already exists, check if certification_id column exists
+            if (!Schema::hasColumn('products', 'certification_id')) {
+                Schema::table('products', function (Blueprint $table) {
+                    $table->unsignedBigInteger('certification_id')->nullable()->after('status');
+                    $table->index('certification_id');
+                });
+            }
+            // Foreign key will be added in certifications migration if certifications table exists
+            return;
+        }
+
         Schema::create('products', function (Blueprint $table) {
             $table->id();
             $table->unsignedBigInteger('seller_id');
@@ -31,7 +43,7 @@ return new class extends Migration
 
             $table->foreign('seller_id')->references('id')->on('users')->onDelete('restrict');
             $table->foreign('category_id')->references('id')->on('product_categories')->onDelete('set null');
-            $table->foreign('certification_id')->references('id')->on('certifications')->onDelete('set null');
+            // certification_id foreign key will be added after certifications table is created
             $table->index('seller_id');
             $table->index('category_id');
             $table->index('status');
@@ -45,4 +57,3 @@ return new class extends Migration
         Schema::dropIfExists('products');
     }
 };
-

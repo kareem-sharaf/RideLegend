@@ -11,12 +11,12 @@ use App\Http\Controllers\Certification\CertificationController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\ProductController as AdminProductController;
-use App\Http\Controllers\Admin\OrderController;
-use App\Http\Controllers\Admin\PaymentController;
+use App\Http\Controllers\Admin\OrderController as AdminOrderController;
+use App\Http\Controllers\Admin\PaymentController as AdminPaymentController;
 use App\Http\Controllers\Admin\InspectionController as AdminInspectionController;
-use App\Http\Controllers\Admin\TradeInController;
+use App\Http\Controllers\Admin\TradeInController as AdminTradeInController;
 use App\Http\Controllers\Admin\WarrantyController;
-use App\Http\Controllers\Admin\ShippingController;
+use App\Http\Controllers\Admin\ShippingController as AdminShippingController;
 use App\Http\Controllers\Admin\SettingsController;
 use App\Http\Controllers\CartController;
 use App\Http\Controllers\CheckoutController;
@@ -30,6 +30,11 @@ use Illuminate\Support\Facades\Route;
 Route::get('/', function () {
     return view('welcome');
 })->name('home');
+
+// About
+Route::get('/about', function () {
+    return view('about');
+})->name('about');
 
 // Authentication Routes
 Route::middleware('guest')->group(function () {
@@ -49,8 +54,35 @@ Route::post('/logout', [LoginController::class, 'logout'])->middleware('auth')->
 
 // Dashboard
 Route::middleware('auth')->group(function () {
-    Route::get('/dashboard', function () {
-        return view('dashboard.index');
+    Route::get('/dashboard', function (\Illuminate\Http\Request $request) {
+        $user = $request->user();
+
+        // Get statistics based on user role
+        $stats = [];
+
+        if ($user->role === 'buyer') {
+            $stats = [
+                'cart_items_count' => \App\Models\CartItem::where('user_id', $user->id)->count(),
+                'orders_count' => \App\Models\Order::where('buyer_id', $user->id)->count(),
+                'pending_orders' => \App\Models\Order::where('buyer_id', $user->id)->where('status', 'pending')->count(),
+                'completed_orders' => \App\Models\Order::where('buyer_id', $user->id)->where('status', 'delivered')->count(),
+                'total_spent' => \App\Models\Order::where('buyer_id', $user->id)->where('status', '!=', 'cancelled')->sum('total'),
+            ];
+        } elseif ($user->role === 'seller') {
+            $stats = [
+                'products_count' => \App\Models\Product::where('seller_id', $user->id)->count(),
+                'active_products' => \App\Models\Product::where('seller_id', $user->id)->where('status', 'active')->count(),
+                'pending_products' => \App\Models\Product::where('seller_id', $user->id)->where('status', 'pending')->count(),
+                'sold_products' => \App\Models\Product::where('seller_id', $user->id)->where('status', 'sold')->count(),
+                'total_revenue' => \App\Models\OrderItem::whereHas('product', function ($q) use ($user) {
+                    $q->where('seller_id', $user->id);
+                })->whereHas('order', function ($q) {
+                    $q->where('status', '!=', 'cancelled');
+                })->sum('total_price'),
+            ];
+        }
+
+        return view('dashboard.index', compact('stats'));
     })->name('dashboard');
     
     // Profile Routes
@@ -164,26 +196,26 @@ Route::middleware('auth')->group(function () {
 
         // Orders Management
         Route::prefix('orders')->name('orders.')->group(function () {
-            Route::get('/', [OrderController::class, 'index'])->name('index');
-            Route::get('/{id}', [OrderController::class, 'show'])->name('show');
-            Route::put('/{id}/status', [OrderController::class, 'updateStatus'])->name('update-status');
-            Route::get('/{id}/invoice', [OrderController::class, 'invoice'])->name('invoice');
-            Route::delete('/{id}', [OrderController::class, 'destroy'])->name('destroy');
+            Route::get('/', [AdminOrderController::class, 'index'])->name('index');
+            Route::get('/{id}', [AdminOrderController::class, 'show'])->name('show');
+            Route::put('/{id}/status', [AdminOrderController::class, 'updateStatus'])->name('update-status');
+            Route::get('/{id}/invoice', [AdminOrderController::class, 'invoice'])->name('invoice');
+            Route::delete('/{id}', [AdminOrderController::class, 'destroy'])->name('destroy');
         });
 
         // Payments Management
         Route::prefix('payments')->name('payments.')->group(function () {
-            Route::get('/', [PaymentController::class, 'index'])->name('index');
-            Route::get('/{id}', [PaymentController::class, 'show'])->name('show');
-            Route::post('/{id}/refund', [PaymentController::class, 'refund'])->name('refund');
+            Route::get('/', [AdminPaymentController::class, 'index'])->name('index');
+            Route::get('/{id}', [AdminPaymentController::class, 'show'])->name('show');
+            Route::post('/{id}/refund', [AdminPaymentController::class, 'refund'])->name('refund');
         });
 
         // Trade-ins Management
         Route::prefix('trade-ins')->name('trade-ins.')->group(function () {
-            Route::get('/', [TradeInController::class, 'index'])->name('index');
-            Route::get('/{id}', [TradeInController::class, 'show'])->name('show');
-            Route::post('/{id}/approve', [TradeInController::class, 'approve'])->name('approve');
-            Route::post('/{id}/reject', [TradeInController::class, 'reject'])->name('reject');
+            Route::get('/', [AdminTradeInController::class, 'index'])->name('index');
+            Route::get('/{id}', [AdminTradeInController::class, 'show'])->name('show');
+            Route::post('/{id}/approve', [AdminTradeInController::class, 'approve'])->name('approve');
+            Route::post('/{id}/reject', [AdminTradeInController::class, 'reject'])->name('reject');
         });
 
         // Warranties Management
@@ -195,9 +227,9 @@ Route::middleware('auth')->group(function () {
 
         // Shipping Management
         Route::prefix('shipping')->name('shipping.')->group(function () {
-            Route::get('/', [ShippingController::class, 'index'])->name('index');
-            Route::get('/{id}', [ShippingController::class, 'show'])->name('show');
-            Route::put('/{id}/status', [ShippingController::class, 'updateStatus'])->name('update-status');
+            Route::get('/', [AdminShippingController::class, 'index'])->name('index');
+            Route::get('/{id}', [AdminShippingController::class, 'show'])->name('show');
+            Route::put('/{id}/status', [AdminShippingController::class, 'updateStatus'])->name('update-status');
         });
 
         // Settings
